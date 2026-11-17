@@ -24,7 +24,7 @@ async function sendMessage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         message: text,
-        history: conversationHistory.slice(0, -1)
+        history: conversationHistory.slice(0, -1) // historial previo
       })
     });
 
@@ -35,12 +35,14 @@ async function sendMessage() {
       appendMessage(data.reply, 'assistant');
       conversationHistory.push({ role: 'assistant', content: data.reply });
     } else {
-      appendMessage('Error: No se pudo obtener respuesta del servidor.', 'assistant');
+      appendMessage('Error: ' + (data.error || 'No se pudo obtener respuesta del servidor.'), 'assistant');
+      conversationHistory.pop(); // quita el mensaje fallido del historial
     }
   } catch (error) {
     console.error('Error de red:', error);
     removeTyping();
     appendMessage('Error de conexión con el servidor.', 'assistant');
+    conversationHistory.pop();
   } finally {
     // Reactivar la interfaz pase lo que pase
     isLoading = false;
@@ -55,7 +57,19 @@ function appendMessage(text, sender) {
   const chatBox = document.getElementById('chatBox');
   const messageDiv = document.createElement('div');
   messageDiv.className = `message ${sender}`;
-  messageDiv.textContent = text;
+
+  if (sender === 'assistant') {
+    // Escapar HTML (seguridad) y convertir **negrita** en <strong>
+    const safe = text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    messageDiv.innerHTML = safe;
+  } else {
+    messageDiv.textContent = text;
+  }
+
   chatBox.appendChild(messageDiv);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
